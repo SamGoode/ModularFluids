@@ -68,8 +68,8 @@ namespace ModularFluids {
 
 	extern "C" MODULARFLUIDS_API void SyncUBO(ISPH_Compute * instance);
 
-	extern "C" MODULARFLUIDS_API void ResetHashData(ISPH_Compute * instance);
+	extern "C" MODULARFLUIDS_API void ResetHashData(ISPH_Compute* instance);
 
-	extern "C" MODULARFLUIDS_API void BindConfigUBO(ISPH_Compute * instance, unsigned int bindingIndex);
-	extern "C" MODULARFLUIDS_API void BindParticleSSBO(ISPH_Compute * instance, unsigned int bindingIndex);
+	//extern "C" MODULARFLUIDS_API void BindConfigUBO(ISPH_Compute* instance, unsigned int bindingIndex);
+	//extern "C" MODULARFLUIDS_API void BindParticleSSBO(ISPH_Compute* instance, unsigned int bindingIndex);
 }

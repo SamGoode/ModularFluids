@@ -3,12 +3,17 @@
 #include <limits.h>
 #include "ModularFluids.h"
 
+// Must come before windows.h includes
+#include "glad.h"
+#include <glfw/include/GLFW/glfw3.h>
+
+
 #include <fstream>
 #include <string>
 #include <iostream>
 
-#include "glad.h"
-#include <glfw/include/GLFW/glfw3.h>
+
+
 
 #define RESOURCE_PATH "../../resources/";
 
@@ -30,13 +35,11 @@
 
 
 // DLL internal state variables:
-static MF_GETPROCADDRESSPROC _glGetProcAddress = NULL;
-
-static void* getProcAddress(const char* name) {
-	return (void*)_glGetProcAddress(name);
-}
-
-
+//static MF_GETPROCADDRESSPROC _glGetProcAddress = NULL;
+//
+//static void* getProcAddress(const char* name) {
+//	return (void*)_glGetProcAddress(name);
+//}
 
 
 class Shader {
@@ -81,6 +84,8 @@ void Shader::init(const char* vertFileName, const char* fragFileName) {
 	glAttachShader(gl_id, vs);
 	glAttachShader(gl_id, fs);
 	glLinkProgram(gl_id);
+
+	glValidateProgram(gl_id);
 
 	int success = GL_FALSE;
 	glGetProgramiv(gl_id, GL_LINK_STATUS, &success);
@@ -184,13 +189,6 @@ void ComputeShader::init(const char* computeFileName, const char* empty) {
 
 	glDeleteShader(cs);
 }
-
-
-
-
-
-
-
 
 
 
@@ -519,9 +517,12 @@ void SPH_Compute::spawnRandomParticles(unsigned int spawnCount) {
 namespace ModularFluids
 {
 	void LoadLib(MF_GETPROCADDRESSPROC funcPtr) {
-		_glGetProcAddress = funcPtr;
+		//_glGetProcAddress = funcPtr;
+		//gladLoadGLLoader(&getProcAddress);
 
-		gladLoadGLLoader(&getProcAddress);
+		std::cout << glfwInit() << std::endl;
+
+		gladLoadGLLoader((GLADloadproc)funcPtr);
 		std::cout << "ModularFluids glDispatchComputeIndirect: " << glad_glDispatchComputeIndirect << std::endl;
 	}
 
@@ -564,11 +565,11 @@ namespace ModularFluids
 		instance->resetHashDataSSBO();
 	}
 
-	void BindConfigUBO(ISPH_Compute* instance, unsigned int bindingIndex) {
-		instance->bindConfigUBO(bindingIndex);
-	}
+	//void BindConfigUBO(ISPH_Compute* instance, unsigned int bindingIndex) {
+	//	instance->bindConfigUBO(bindingIndex);
+	//}
 
-	void BindParticleSSBO(ISPH_Compute* instance, unsigned int bindingIndex) {
-		instance->bindParticleSSBO(bindingIndex);
-	}
+	//void BindParticleSSBO(ISPH_Compute* instance, unsigned int bindingIndex) {
+	//	instance->bindParticleSSBO(bindingIndex);
+	//}
 }
