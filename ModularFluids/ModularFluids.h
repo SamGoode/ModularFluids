@@ -27,6 +27,8 @@ public:
 	virtual void init(glm::vec3 _position, glm::vec3 _bounds, glm::vec3 _gravity, float _particleRadius = 0.4f,
 		float _restDensity = 1000.f, float _stiffness = 20.f, float _nearStiffness = 80.f) = 0;
 
+	// deltaTime is in seconds.
+	virtual void update(float deltaTime) = 0;
 	virtual void stepSim() = 0;
 
 	// Stores simulation parameters in a buffer and then sends buffer data to GPU.
@@ -53,23 +55,13 @@ typedef procAddress (*MF_GETPROCADDRESSPROC)(const char* procname);
 namespace ModularFluids {
 	extern "C" MODULARFLUIDS_API void LoadLib(MF_GETPROCADDRESSPROC);
 
-	extern "C" MODULARFLUIDS_API ISPH_Compute * Create();
-	extern "C" MODULARFLUIDS_API void Destroy(ISPH_Compute * instance);
+	extern "C" MODULARFLUIDS_API ISPH_Compute* Create();
+	extern "C" MODULARFLUIDS_API void Destroy(ISPH_Compute* instance);
 
-	extern "C" MODULARFLUIDS_API void Init(ISPH_Compute * instance,
+	extern "C" MODULARFLUIDS_API void Init(ISPH_Compute* instance,
 		glm::vec3 position, glm::vec3 bounds, glm::vec3 gravity,
 		float particleRadius = 0.4f, float restDensity = 1000.f, float stiffness = 20.f, float nearStiffness = 80.f);
 
-	extern "C" MODULARFLUIDS_API void StepSim(ISPH_Compute * instance);
-
-	extern "C" MODULARFLUIDS_API unsigned int GetParticleCount(ISPH_Compute * instance);
-	extern "C" MODULARFLUIDS_API void SpawnParticles(ISPH_Compute * instance, unsigned int particleCount);
-	extern "C" MODULARFLUIDS_API void ClearParticles(ISPH_Compute * instance);
-
-	extern "C" MODULARFLUIDS_API void SyncUBO(ISPH_Compute * instance);
-
-	extern "C" MODULARFLUIDS_API void ResetHashData(ISPH_Compute* instance);
-
-	//extern "C" MODULARFLUIDS_API void BindConfigUBO(ISPH_Compute* instance, unsigned int bindingIndex);
-	//extern "C" MODULARFLUIDS_API void BindParticleSSBO(ISPH_Compute* instance, unsigned int bindingIndex);
+	extern "C" MODULARFLUIDS_API void Update(ISPH_Compute* instance);
+	extern "C" MODULARFLUIDS_API void StepSim(ISPH_Compute* instance);
 }

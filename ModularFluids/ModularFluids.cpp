@@ -7,18 +7,19 @@
 #include "glad.h"
 #include <glfw/include/GLFW/glfw3.h>
 
-
 #include <fstream>
-#include <string>
+#include <string>	
 #include <iostream>
 
 
+#include "resource.h"
+#include "ResourceManager.h"
 
 
 #define RESOURCE_PATH "../../resources/";
 
-
-#define MAX_PARTICLES 2048
+//#define MAX_PARTICLES 2048
+#define MAX_PARTICLES 65536
 //#define MAX_PARTICLES 262144
 
 //#define MAX_PARTICLES_PER_CELL 16 // Only viable when using Mullet.M position based fluid technique
@@ -35,13 +36,14 @@
 
 
 // DLL internal state variables:
+static IResource* beeMovie = nullptr;
+static IResource* particleComputeTxt = nullptr;
+static IResource* buildHashTxt = nullptr;
+static IResource* computeDensityTxt = nullptr;
+static IResource* computePressureTxt = nullptr;
 static const unsigned int zero = 0;
 static const unsigned int uintMax = 0xFFFFFFFF;
-//static MF_GETPROCADDRESSPROC _glGetProcAddress = NULL;
-//
-//static void* getProcAddress(const char* name) {
-//	return (void*)_glGetProcAddress(name);
-//}
+
 
 
 class Shader {
@@ -52,7 +54,7 @@ public:
 	Shader() {}
 	virtual ~Shader() { glDeleteProgram(gl_id); }
 
-	virtual void init(const char* vertFileName, const char* fragFileName);
+	//virtual void init(const char* vertFileName, const char* fragFileName);
 	void use() { glUseProgram(gl_id); }
 	void bindUniform(const float& f, const char* name) { unsigned int uniformLocation = glGetUniformLocation(gl_id, name); glUniform1f(uniformLocation, f); }
 	void bindUniform(const int& i, const char* name) { unsigned int uniformLocation = glGetUniformLocation(gl_id, name); glUniform1i(uniformLocation, i); }
@@ -62,115 +64,31 @@ public:
 	void bindUniformBuffer(GLuint bindingIndex, const char* name) { unsigned int uniformBlockIndex = glGetUniformBlockIndex(gl_id, name); glUniformBlockBinding(gl_id, uniformBlockIndex, bindingIndex); }
 
 protected:
-	unsigned int loadShaderFromFile(GLenum type, const char* fileName);
+	//unsigned int loadShaderFromFile(GLenum type, const char* fileName);
+	unsigned int loadShaderFromText(GLenum type, const char* srcCodeTxt);
 };
 
 class ComputeShader : public Shader {
 public:
 	ComputeShader() {}
 
-	virtual void init(const char* computeFileName, const char* empty = NULL) override;
+	//virtual void init(const char* computeFileName, const char* empty = NULL) override;
+	void initFromText(const char* srcCodeTxt);
 };
 
-
-void Shader::init(const char* vertFileName, const char* fragFileName) {
-	assert(gl_id == 0 && "Shader already initialized");
-
-	unsigned int vs = loadShaderFromFile(GL_VERTEX_SHADER, vertFileName);
-	glCompileShader(vs);
-
-	unsigned int fs = loadShaderFromFile(GL_FRAGMENT_SHADER, fragFileName);
-	glCompileShader(fs);
-
-	gl_id = glCreateProgram();
-	glAttachShader(gl_id, vs);
-	glAttachShader(gl_id, fs);
-	glLinkProgram(gl_id);
-
-	glValidateProgram(gl_id);
-
-	int success = GL_FALSE;
-	glGetProgramiv(gl_id, GL_LINK_STATUS, &success);
-	if (success == GL_FALSE) {
-		int infoLogLength = 0;
-		glGetProgramiv(gl_id, GL_INFO_LOG_LENGTH, &infoLogLength);
-		char* infoLog = new char[infoLogLength + 1];
-
-		glGetProgramInfoLog(gl_id, infoLogLength, 0, infoLog);
-		printf("Error: Failed to link shader program!\nVertex Shader: %s\nFragment Shader: %s\n%s\n", vertFileName, fragFileName, infoLog);
-		delete[] infoLog;
-	}
-
-	glDeleteShader(vs);
-	glDeleteShader(fs);
-}
-
-unsigned int Shader::loadShaderFromFile(GLenum type, const char* fileName) {
+unsigned int Shader::loadShaderFromText(GLenum type, const char* srcCodeText)
+{
 	unsigned int shader = glCreateShader(type);
-
-	std::string fullpath = RESOURCE_PATH;
-	fullpath += fileName;
-
-	std::ifstream fileStream;
-	fileStream.open(fullpath, std::ios::in | std::ios::binary);
-
-	std::string fileString;
-
-	std::string line;
-	while (std::getline(fileStream, line)) {
-		if (line[0] == '#') {
-			if (line.substr(1, 7) == "include") {
-				size_t nameStart = line.find_first_of('"', 7) + 1;
-				size_t nameEnd = line.find_first_of('"', nameStart);
-				std::string name = RESOURCE_PATH;
-				name += line.substr(nameStart, nameEnd - nameStart);
-
-				std::ifstream includeFile;
-				includeFile.open(name, std::ios::in | std::ios::binary);
-
-				includeFile.seekg(0, includeFile.end);
-				int fileLength = (int)includeFile.tellg();
-				includeFile.seekg(0, includeFile.beg);
-
-				char* buffer = new char[fileLength + 1];
-				includeFile.read(buffer, fileLength);
-				buffer[fileLength] = NULL;
-
-				includeFile.close();
-
-				fileString.append(buffer);
-				fileString.append("\n");
-
-				delete[] buffer;
-
-				continue;
-			}
-		}
-		fileString.append(line + "\n");
-	}
-	fileStream.close();
-
-	//fileStream.read(test.data(), fileLength);
-	//test.copy(fileText, sizeof(char) * (fileLength + 1));
-	//fileString[fileLength] = NULL;
-
-	const char* c_str = fileString.c_str();
-	glShaderSource(shader, 1, &c_str, 0);
-	//glShaderSource(shader, 1, (const char**)&fileText, 0);
-
-	//delete[] fileText;
+	//glShaderSource(shader, 1, &srcCodeText, 0);
+	glShaderSource(shader, 1, (const char**)&srcCodeText, 0);
 
 	return shader;
 }
 
-
-
-
-
-void ComputeShader::init(const char* computeFileName, const char* empty) {
+void ComputeShader::initFromText(const char* srcCodeTxt) {
 	assert(gl_id == 0 && "Shader already initialized");
 
-	unsigned int cs = loadShaderFromFile(GL_COMPUTE_SHADER, computeFileName);
+	unsigned int cs = loadShaderFromText(GL_COMPUTE_SHADER, srcCodeTxt);
 	glCompileShader(cs);
 
 	gl_id = glCreateProgram();
@@ -294,10 +212,13 @@ public:
 
 class SPH_Compute : public ISPH_Compute {
 private:
+	const unsigned int solverIterations = 2;
+	const unsigned int maxTicksPerUpdate = 8;
+	const float fixedTimeStep = 0.01f;
+	float accumulatedTime = 0.f;
+
 	glm::vec3 position = glm::vec3(0);
 	glm::vec3 bounds = glm::vec3(0);
-
-	const float fixedTimeStep = 0.01f;
 
 	glm::vec3 gravity = glm::vec3(0.f);
 	float particleRadius;
@@ -330,6 +251,7 @@ public:
 	virtual void init(glm::vec3 _position, glm::vec3 _bounds, glm::vec3 _gravity, float _particleRadius = 0.4f,
 		float _restDensity = 1000.f, float _stiffness = 20.f, float _nearStiffness = 80.f) override;
 
+	virtual void update(float deltaTime) override;
 	virtual void stepSim() override;
 
 	// Stores simulation parameters in a buffer and then sends buffer data to GPU.
@@ -383,10 +305,28 @@ void SPH_Compute::init(glm::vec3 _position, glm::vec3 _bounds, glm::vec3 _gravit
 	indirectCmdsSSBO.clearBufferData();
 
 	// Compute Shaders
-	particleComputeShader.init("shaders/particleCompute.glsl");
-	computeHashTableShader.init("shaders/buildHashTable.glsl");
-	computeDensityShader.init("shaders/computeDensity.glsl");
-	computePressureShader.init("shaders/computePressure.glsl");
+
+	particleComputeShader.initFromText(particleComputeTxt->getString().data());
+	computeHashTableShader.initFromText(buildHashTxt->getString().data());
+	computeDensityShader.initFromText(computeDensityTxt->getString().data());
+	computePressureShader.initFromText(computePressureTxt->getString().data());
+
+	//particleComputeShader.init("shaders/particleCompute.glsl");
+	//computeHashTableShader.init("shaders/buildHashTable.glsl");
+	//computeDensityShader.init("shaders/computeDensity.glsl");
+	//computePressureShader.init("shaders/computePressure.glsl");
+}
+
+void SPH_Compute::update(float deltaTime) {
+	accumulatedTime += deltaTime;
+
+	syncUBO();
+
+	for (unsigned int step = 0; step < maxTicksPerUpdate && accumulatedTime > fixedTimeStep; step++) {
+		accumulatedTime -= fixedTimeStep;
+
+		stepSim();
+	}
 }
 
 void SPH_Compute::stepSim() {
@@ -395,28 +335,28 @@ void SPH_Compute::stepSim() {
 
 	indirectCmdsSSBO.bindBufferBase(3);
 
-	std::cout << "-----Before Particle Compute-----" << std::endl;
+	//std::cout << "-----Before Particle Compute-----" << std::endl;
 
-	unsigned int usedCells;
-	particleSSBO.getSubData(15 * MAX_PARTICLES * sizeof(float), sizeof(float), &usedCells);
-	std::cout << "used cells: " << usedCells << std::endl;
+	//unsigned int usedCells;
+	//particleSSBO.getSubData(15 * MAX_PARTICLES * sizeof(float), sizeof(float), &usedCells);
+	//std::cout << "used cells: " << usedCells << std::endl;
 
-	unsigned int hashCellStatus;
-	particleSSBO.getSubData(((16 * MAX_PARTICLES) + 1) * sizeof(float), sizeof(float), &hashCellStatus);
-	std::cout << "cell status: " << hashCellStatus << std::endl;
+	//unsigned int hashCellStatus;
+	//particleSSBO.getSubData(((16 * MAX_PARTICLES) + 1) * sizeof(float), sizeof(float), &hashCellStatus);
+	//std::cout << "cell status: " << hashCellStatus << std::endl;
 
 	particleComputeShader.use();
 	glDispatchCompute((particleCount / WORKGROUP_SIZE_X) + ((particleCount % WORKGROUP_SIZE_X) != 0), 1, 1);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-	std::cout << "-----After Particle Compute-----" << std::endl;
+	//std::cout << "-----After Particle Compute-----" << std::endl;
 
-	//unsigned int usedCells;
-	particleSSBO.getSubData(15 * MAX_PARTICLES * sizeof(float), sizeof(float), &usedCells);
-	std::cout << "used cells: " << usedCells << std::endl;
+	////unsigned int usedCells;
+	//particleSSBO.getSubData(15 * MAX_PARTICLES * sizeof(float), sizeof(float), &usedCells);
+	//std::cout << "used cells: " << usedCells << std::endl;
 
-	particleSSBO.getSubData(((16 * MAX_PARTICLES) + 1) * sizeof(float), sizeof(float), &hashCellStatus);
-	std::cout << "cell status: " << hashCellStatus << std::endl;
+	//particleSSBO.getSubData(((16 * MAX_PARTICLES) + 1) * sizeof(float), sizeof(float), &hashCellStatus);
+	//std::cout << "cell status: " << hashCellStatus << std::endl;
 
 	computeHashTableShader.use();
 	glDispatchCompute((particleCount / WORKGROUP_SIZE_X) + ((particleCount % WORKGROUP_SIZE_X) != 0), 1, 1);
@@ -425,23 +365,21 @@ void SPH_Compute::stepSim() {
 	indirectCmdsSSBO.bindAsIndirect();
 	glMemoryBarrier(GL_COMMAND_BARRIER_BIT);
 
-	unsigned int cmd[3];
-	indirectCmdsSSBO.getSubData(0, sizeof(unsigned int) * 3, cmd);
-	std::cout << "x: " << cmd[0] << ", y: " << cmd[1] << ", z: " << cmd[2] << std::endl;
+	//unsigned int cmd[3];
+	//indirectCmdsSSBO.getSubData(0, sizeof(unsigned int) * 3, cmd);
+	//std::cout << "x: " << cmd[0] << ", y: " << cmd[1] << ", z: " << cmd[2] << std::endl;
 
-	//for (unsigned int iteration = 0; iteration < solverIterations; iteration++) {
 	int time = (int)std::time(0);
+	for (unsigned int iteration = 0; iteration < solverIterations; iteration++) {
+		computeDensityShader.use();
+		glDispatchComputeIndirect(0);
+		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-	computeDensityShader.use();
-	//computeDensityShader.bindUniform(time, "time");
-	glDispatchComputeIndirect(0);
-	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-
-	computePressureShader.use();
-	computePressureShader.bindUniform(time, "time");
-	glDispatchComputeIndirect(0);
-	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-	//}
+		computePressureShader.use();
+		computePressureShader.bindUniform(time, "time");
+		glDispatchComputeIndirect(0);
+		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+	}
 }
 
 // Stores simulation parameters in a buffer and then sends buffer data to GPU.
@@ -466,10 +404,8 @@ void SPH_Compute::syncUBO() {
 }
 
 void SPH_Compute::resetHashDataSSBO() {
-	//const unsigned int usedCells = 0;
-	//const unsigned int defaultHash = 0;//0xFFFFFFFF;
-	particleSSBO.subData(15 * MAX_PARTICLES * sizeof(float), sizeof(float), &zero);//&usedCells);
-	//particleSSBO->clearNamedSubData(GL_R32UI, 15 * MAX_PARTICLES * sizeof(float), sizeof(float), GL_RED_INTEGER, GL_UNSIGNED_INT, &usedCells);
+	//particleSSBO.subData(15 * MAX_PARTICLES * sizeof(float), sizeof(float), &zero);//&usedCells);
+	particleSSBO.clearNamedSubData(GL_R32UI, 15 * MAX_PARTICLES * sizeof(float), sizeof(float), GL_RED_INTEGER, GL_UNSIGNED_INT, &zero);
 	particleSSBO.clearNamedSubData(GL_R32UI, ((16 * MAX_PARTICLES) + 1) * sizeof(float), MAX_PARTICLES * sizeof(float), GL_RED_INTEGER, GL_UNSIGNED_INT, &uintMax);
 	particleSSBO.clearNamedSubData(GL_R32UI, ((17 * MAX_PARTICLES) + 1) * sizeof(float), MAX_PARTICLES * sizeof(float), GL_RED_INTEGER, GL_UNSIGNED_INT, &zero);
 	glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
@@ -494,14 +430,14 @@ void SPH_Compute::spawnRandomParticles(unsigned int spawnCount) {
 		// Fill position and previous position memory chunk.
 		particleSSBO.subData((particleCount) * sizeof(glm::vec4), batchCount * sizeof(glm::vec4), positionBuffer);
 		particleSSBO.subData((MAX_PARTICLES + particleCount) * sizeof(glm::vec4), batchCount * sizeof(glm::vec4), positionBuffer);
-		glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
+		//glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
 
 		particleCount += batchCount;
 	}
 		
 	syncUBO();
+	glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
 }
-
 
 
 
@@ -521,22 +457,20 @@ void SPH_Compute::spawnRandomParticles(unsigned int spawnCount) {
 namespace ModularFluids
 {
 	void LoadLib(MF_GETPROCADDRESSPROC funcPtr) {
-		//_glGetProcAddress = funcPtr;
-		//gladLoadGLLoader(&getProcAddress);
+		beeMovie = ResourceManager::genResource(IDR_TEXTFILE1, TEXTFILE);
+		//std::cout << beeMovie->getString() << std::endl;
+		particleComputeTxt = ResourceManager::genResource(IDR_TEXTFILE2, TEXTFILE);
+		buildHashTxt = ResourceManager::genResource(IDR_TEXTFILE3, TEXTFILE);
+		computeDensityTxt = ResourceManager::genResource(IDR_TEXTFILE4, TEXTFILE);
+		computePressureTxt = ResourceManager::genResource(IDR_TEXTFILE5, TEXTFILE);
 
-		//std::cout << glfwInit() << std::endl;
 
 		gladLoadGLLoader((GLADloadproc)funcPtr);
 		std::cout << "ModularFluids glDispatchComputeIndirect: " << glad_glDispatchComputeIndirect << std::endl;
 	}
 
-	ISPH_Compute* Create() {
-		return new SPH_Compute();
-	}
-
-	void Destroy(ISPH_Compute* instance) {
-		delete instance;
-	}
+	ISPH_Compute* Create() { return new SPH_Compute(); }
+	void Destroy(ISPH_Compute* instance) { delete instance; }
 
 	void Init(ISPH_Compute* instance,
 		glm::vec3 position, glm::vec3 bounds, glm::vec3 gravity,
@@ -545,35 +479,6 @@ namespace ModularFluids
 		instance->init(position, bounds, gravity, particleRadius, restDensity, stiffness, nearStiffness);
 	}
 
-	void StepSim(ISPH_Compute* instance) {
-		instance->stepSim();
-	}
-
-	unsigned int GetParticleCount(ISPH_Compute* instance) {
-		return instance->getParticleCount();
-	}
-
-	void SpawnParticles(ISPH_Compute* instance, unsigned int particleCount) {
-		instance->spawnRandomParticles(particleCount);
-	}
-
-	void ClearParticles(ISPH_Compute* instance) {
-		instance->clearParticles();
-	}
-
-	void SyncUBO(ISPH_Compute* instance) {
-		instance->syncUBO();
-	}
-
-	void ResetHashData(ISPH_Compute* instance) {
-		instance->resetHashDataSSBO();
-	}
-
-	//void BindConfigUBO(ISPH_Compute* instance, unsigned int bindingIndex) {
-	//	instance->bindConfigUBO(bindingIndex);
-	//}
-
-	//void BindParticleSSBO(ISPH_Compute* instance, unsigned int bindingIndex) {
-	//	instance->bindParticleSSBO(bindingIndex);
-	//}
+	void Update(ISPH_Compute* instance, float deltaTime) { instance->update(deltaTime); }
+	void StepSim(ISPH_Compute* instance) { instance->stepSim(); }
 }
