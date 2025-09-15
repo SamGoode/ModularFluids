@@ -11,12 +11,9 @@
 #include <string>	
 #include <iostream>
 
-
 #include "resource.h"
 #include "ResourceManager.h"
 
-
-#define RESOURCE_PATH "../../resources/";
 
 //#define MAX_PARTICLES 2048
 #define MAX_PARTICLES 65536
@@ -305,16 +302,10 @@ void SPH_Compute::init(glm::vec3 _position, glm::vec3 _bounds, glm::vec3 _gravit
 	indirectCmdsSSBO.clearBufferData();
 
 	// Compute Shaders
-
 	particleComputeShader.initFromText(particleComputeTxt->getString().data());
 	computeHashTableShader.initFromText(buildHashTxt->getString().data());
 	computeDensityShader.initFromText(computeDensityTxt->getString().data());
 	computePressureShader.initFromText(computePressureTxt->getString().data());
-
-	//particleComputeShader.init("shaders/particleCompute.glsl");
-	//computeHashTableShader.init("shaders/buildHashTable.glsl");
-	//computeDensityShader.init("shaders/computeDensity.glsl");
-	//computePressureShader.init("shaders/computePressure.glsl");
 }
 
 void SPH_Compute::update(float deltaTime) {
@@ -335,28 +326,9 @@ void SPH_Compute::stepSim() {
 
 	indirectCmdsSSBO.bindBufferBase(3);
 
-	//std::cout << "-----Before Particle Compute-----" << std::endl;
-
-	//unsigned int usedCells;
-	//particleSSBO.getSubData(15 * MAX_PARTICLES * sizeof(float), sizeof(float), &usedCells);
-	//std::cout << "used cells: " << usedCells << std::endl;
-
-	//unsigned int hashCellStatus;
-	//particleSSBO.getSubData(((16 * MAX_PARTICLES) + 1) * sizeof(float), sizeof(float), &hashCellStatus);
-	//std::cout << "cell status: " << hashCellStatus << std::endl;
-
 	particleComputeShader.use();
 	glDispatchCompute((particleCount / WORKGROUP_SIZE_X) + ((particleCount % WORKGROUP_SIZE_X) != 0), 1, 1);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-
-	//std::cout << "-----After Particle Compute-----" << std::endl;
-
-	////unsigned int usedCells;
-	//particleSSBO.getSubData(15 * MAX_PARTICLES * sizeof(float), sizeof(float), &usedCells);
-	//std::cout << "used cells: " << usedCells << std::endl;
-
-	//particleSSBO.getSubData(((16 * MAX_PARTICLES) + 1) * sizeof(float), sizeof(float), &hashCellStatus);
-	//std::cout << "cell status: " << hashCellStatus << std::endl;
 
 	computeHashTableShader.use();
 	glDispatchCompute((particleCount / WORKGROUP_SIZE_X) + ((particleCount % WORKGROUP_SIZE_X) != 0), 1, 1);
@@ -364,10 +336,6 @@ void SPH_Compute::stepSim() {
 
 	indirectCmdsSSBO.bindAsIndirect();
 	glMemoryBarrier(GL_COMMAND_BARRIER_BIT);
-
-	//unsigned int cmd[3];
-	//indirectCmdsSSBO.getSubData(0, sizeof(unsigned int) * 3, cmd);
-	//std::cout << "x: " << cmd[0] << ", y: " << cmd[1] << ", z: " << cmd[2] << std::endl;
 
 	int time = (int)std::time(0);
 	for (unsigned int iteration = 0; iteration < solverIterations; iteration++) {
@@ -430,7 +398,6 @@ void SPH_Compute::spawnRandomParticles(unsigned int spawnCount) {
 		// Fill position and previous position memory chunk.
 		particleSSBO.subData((particleCount) * sizeof(glm::vec4), batchCount * sizeof(glm::vec4), positionBuffer);
 		particleSSBO.subData((MAX_PARTICLES + particleCount) * sizeof(glm::vec4), batchCount * sizeof(glm::vec4), positionBuffer);
-		//glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
 
 		particleCount += batchCount;
 	}
