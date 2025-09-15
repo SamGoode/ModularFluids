@@ -35,6 +35,8 @@
 
 
 // DLL internal state variables:
+static const unsigned int zero = 0;
+static const unsigned int uintMax = 0xFFFFFFFF;
 //static MF_GETPROCADDRESSPROC _glGetProcAddress = NULL;
 //
 //static void* getProcAddress(const char* name) {
@@ -174,6 +176,8 @@ void ComputeShader::init(const char* computeFileName, const char* empty) {
 	gl_id = glCreateProgram();
 	glAttachShader(gl_id, cs);
 	glLinkProgram(gl_id);
+
+	glValidateProgram(gl_id);
 
 	int success = GL_FALSE;
 	glGetProgramiv(gl_id, GL_LINK_STATUS, &success);
@@ -391,13 +395,28 @@ void SPH_Compute::stepSim() {
 
 	indirectCmdsSSBO.bindBufferBase(3);
 
-	particleComputeShader.use();
-	glDispatchCompute((particleCount / WORKGROUP_SIZE_X) + ((particleCount % WORKGROUP_SIZE_X) != 0), 1, 1);
-	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+	std::cout << "-----Before Particle Compute-----" << std::endl;
 
 	unsigned int usedCells;
 	particleSSBO.getSubData(15 * MAX_PARTICLES * sizeof(float), sizeof(float), &usedCells);
 	std::cout << "used cells: " << usedCells << std::endl;
+
+	unsigned int hashCellStatus;
+	particleSSBO.getSubData(((16 * MAX_PARTICLES) + 1) * sizeof(float), sizeof(float), &hashCellStatus);
+	std::cout << "cell status: " << hashCellStatus << std::endl;
+
+	particleComputeShader.use();
+	glDispatchCompute((particleCount / WORKGROUP_SIZE_X) + ((particleCount % WORKGROUP_SIZE_X) != 0), 1, 1);
+	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+	std::cout << "-----After Particle Compute-----" << std::endl;
+
+	//unsigned int usedCells;
+	particleSSBO.getSubData(15 * MAX_PARTICLES * sizeof(float), sizeof(float), &usedCells);
+	std::cout << "used cells: " << usedCells << std::endl;
+
+	particleSSBO.getSubData(((16 * MAX_PARTICLES) + 1) * sizeof(float), sizeof(float), &hashCellStatus);
+	std::cout << "cell status: " << hashCellStatus << std::endl;
 
 	computeHashTableShader.use();
 	glDispatchCompute((particleCount / WORKGROUP_SIZE_X) + ((particleCount % WORKGROUP_SIZE_X) != 0), 1, 1);
@@ -447,29 +466,14 @@ void SPH_Compute::syncUBO() {
 }
 
 void SPH_Compute::resetHashDataSSBO() {
-	const unsigned int usedCells = 0;
-	const unsigned int defaultHash = 0xFFFFFFFF;
-	particleSSBO.subData(15 * MAX_PARTICLES * sizeof(float), sizeof(float), &usedCells);
+	//const unsigned int usedCells = 0;
+	//const unsigned int defaultHash = 0;//0xFFFFFFFF;
+	particleSSBO.subData(15 * MAX_PARTICLES * sizeof(float), sizeof(float), &zero);//&usedCells);
 	//particleSSBO->clearNamedSubData(GL_R32UI, 15 * MAX_PARTICLES * sizeof(float), sizeof(float), GL_RED_INTEGER, GL_UNSIGNED_INT, &usedCells);
-	particleSSBO.clearNamedSubData(GL_R32UI, ((16 * MAX_PARTICLES) + 1) * sizeof(float), MAX_PARTICLES * sizeof(float), GL_RED_INTEGER, GL_UNSIGNED_INT, &defaultHash);
-	particleSSBO.clearNamedSubData(GL_R32UI, ((17 * MAX_PARTICLES) + 1) * sizeof(float), MAX_PARTICLES * sizeof(float), GL_RED_INTEGER, GL_UNSIGNED_INT, &usedCells);
+	particleSSBO.clearNamedSubData(GL_R32UI, ((16 * MAX_PARTICLES) + 1) * sizeof(float), MAX_PARTICLES * sizeof(float), GL_RED_INTEGER, GL_UNSIGNED_INT, &uintMax);
+	particleSSBO.clearNamedSubData(GL_R32UI, ((17 * MAX_PARTICLES) + 1) * sizeof(float), MAX_PARTICLES * sizeof(float), GL_RED_INTEGER, GL_UNSIGNED_INT, &zero);
 	glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
 }
-//struct ssboData {
-//	vec4 positions[MAX_PARTICLES];
-//	vec4 previousPositions[MAX_PARTICLES];
-//	vec4 velocities[MAX_PARTICLES];
-//
-//	float lambdas[MAX_PARTICLES];
-//	float densities[MAX_PARTICLES];
-//	float nearDensities[MAX_PARTICLES];
-//
-//	unsigned int usedCells;
-//	unsigned int hashes[MAX_PARTICLES];
-//	unsigned int hashTable[MAX_PARTICLES];// clear this one
-//	unsigned int cellEntries[MAX_PARTICLES];// clear this one
-//	unsigned int cells[MAX_PARTICLES * MAX_PARTICLES_PER_CELL];// clear this one
-//};
 
 
 // Spawns particles randomly within simulation bounds in batches of 1024.
@@ -520,7 +524,7 @@ namespace ModularFluids
 		//_glGetProcAddress = funcPtr;
 		//gladLoadGLLoader(&getProcAddress);
 
-		std::cout << glfwInit() << std::endl;
+		//std::cout << glfwInit() << std::endl;
 
 		gladLoadGLLoader((GLADloadproc)funcPtr);
 		std::cout << "ModularFluids glDispatchComputeIndirect: " << glad_glDispatchComputeIndirect << std::endl;
