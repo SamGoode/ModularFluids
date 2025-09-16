@@ -7,6 +7,7 @@
 #define IDR_TEXTFILE3                   103
 #define IDR_TEXTFILE4                   104
 #define IDR_TEXTFILE5                   105
+#define IDR_TEXTFILE6                   106
 #define TEXTFILE                        256
 
 // Next default values for new objects

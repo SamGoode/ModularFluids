@@ -1,20 +1,11 @@
 #include "ResourceManager.h"
 
-
-#include <iostream>
-
 #include <windows.h>
-#include <cstdio>
+#include <iostream>
+#include <unordered_map>
+
 #include "resource.h"
 
-//#include "ModularFluids.h"
-
-static HMODULE dllModule = NULL;
-
-void ResourceManager::passDllModuleRef(std::size_t hModule) {
-	//setDllModule((size_t)hModule);
-	dllModule = (HMODULE)hModule;
-}
 
 
 class Resource : public IResource {
@@ -31,19 +22,31 @@ private:
 	Parameters p;
 
 public:
-
-	virtual void load(int resource_id, int resource_type) override {
+	Resource(HMODULE hModule, int resource_id, int resource_type) {
 		//std::cout << hResource << std::endl;
-		hResource = FindResource(dllModule, MAKEINTRESOURCE(resource_id), MAKEINTRESOURCE(resource_type));
+		hResource = FindResource(hModule, MAKEINTRESOURCE(resource_id), MAKEINTRESOURCE(resource_type));
 		//std::cout << hResource << std::endl;
 
 		//std::cout << hMemory << std::endl;
-		hMemory = LoadResource(dllModule, hResource);
+		hMemory = LoadResource(hModule, hResource);
 		//std::cout << hMemory << std::endl;
 
-		p.size_bytes = SizeofResource(dllModule, hResource);
+		p.size_bytes = SizeofResource(hModule, hResource);
 		p.ptr = LockResource(hMemory);
 	}
+
+	//virtual void load(int resource_id, int resource_type) override {
+	//	//std::cout << hResource << std::endl;
+	//	hResource = FindResource(dllModule, MAKEINTRESOURCE(resource_id), MAKEINTRESOURCE(resource_type));
+	//	//std::cout << hResource << std::endl;
+
+	//	//std::cout << hMemory << std::endl;
+	//	hMemory = LoadResource(dllModule, hResource);
+	//	//std::cout << hMemory << std::endl;
+
+	//	p.size_bytes = SizeofResource(dllModule, hResource);
+	//	p.ptr = LockResource(hMemory);
+	//}
 
 	virtual std::string_view getString() const override {
 		std::string_view dst;
@@ -62,12 +65,34 @@ public:
 };
 
 
-IResource* ResourceManager::genResource() {
-	return new Resource();
+// ResourceManager internal variables
+static HMODULE dllModule = NULL;
+void ResourceManager::passDllModuleRef(std::size_t hModule) {
+	dllModule = (HMODULE)hModule;
 }
 
-IResource* ResourceManager::genResource(int resource_id, int resource_type) {
-	IResource* res = new Resource();
-	res->load(resource_id, resource_type);
-	return res;
+
+static std::unordered_map<int, IResource*> loadedResources;
+void ResourceManager::loadResources() {
+	loadedResources.insert({ IDR_TEXTFILE1, new Resource(dllModule, IDR_TEXTFILE1, TEXTFILE) });
+	loadedResources.insert({ IDR_TEXTFILE2, new Resource(dllModule, IDR_TEXTFILE2, TEXTFILE) });
+	loadedResources.insert({ IDR_TEXTFILE3, new Resource(dllModule, IDR_TEXTFILE3, TEXTFILE) });
+	loadedResources.insert({ IDR_TEXTFILE4, new Resource(dllModule, IDR_TEXTFILE4, TEXTFILE) });
+	loadedResources.insert({ IDR_TEXTFILE5, new Resource(dllModule, IDR_TEXTFILE5, TEXTFILE) });
 }
+
+
+IResource* ResourceManager::getResource(int resource_id) {
+	return loadedResources[resource_id];
+}
+
+
+//IResource* ResourceManager::genResource() {
+//	return new Resource();
+//}
+
+//IResource* ResourceManager::genResource(int resource_id, int resource_type) {
+//	IResource* res = new Resource(resource_id, resource_type);
+//	//res->load(resource_id, resource_type);
+//	return res;
+//}

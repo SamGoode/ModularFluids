@@ -26,18 +26,20 @@
 
 #define COMPUTE_CELLS_PER_WORKGROUP 16
 
-#define PROJECTIONVIEW_UBO 0
+//#define PROJECTIONVIEW_UBO 0
 
 #define FLUID_CONFIG_UBO 1
 #define FLUID_DATA_SSBO 2
 
 
 // DLL internal state variables:
-static IResource* beeMovie = nullptr;
-static IResource* particleComputeTxt = nullptr;
-static IResource* buildHashTxt = nullptr;
-static IResource* computeDensityTxt = nullptr;
-static IResource* computePressureTxt = nullptr;
+//static IResource* beeMovie = nullptr;
+//static IResource* particleComputeTxt = nullptr;
+//static IResource* buildHashTxt = nullptr;
+//static IResource* computeDensityTxt = nullptr;
+//static IResource* computePressureTxt = nullptr;
+//static IResource* configTxt = nullptr;
+
 static const unsigned int zero = 0;
 static const unsigned int uintMax = 0xFFFFFFFF;
 
@@ -302,10 +304,17 @@ void SPH_Compute::init(glm::vec3 _position, glm::vec3 _bounds, glm::vec3 _gravit
 	indirectCmdsSSBO.clearBufferData();
 
 	// Compute Shaders
-	particleComputeShader.initFromText(particleComputeTxt->getString().data());
-	computeHashTableShader.initFromText(buildHashTxt->getString().data());
-	computeDensityShader.initFromText(computeDensityTxt->getString().data());
-	computePressureShader.initFromText(computePressureTxt->getString().data());
+
+	//std::cout << ResourceManager::getResource(IDR_TEXTFILE2)->getString().data() << std::endl;
+	particleComputeShader.initFromText(ResourceManager::getResource(IDR_TEXTFILE2)->getString().data());
+	computeHashTableShader.initFromText(ResourceManager::getResource(IDR_TEXTFILE3)->getString().data());
+	computeDensityShader.initFromText(ResourceManager::getResource(IDR_TEXTFILE4)->getString().data());
+	computePressureShader.initFromText(ResourceManager::getResource(IDR_TEXTFILE5)->getString().data());
+
+	//particleComputeShader.initFromText(particleComputeTxt->getString().data());
+	//computeHashTableShader.initFromText(buildHashTxt->getString().data());
+	//computeDensityShader.initFromText(computeDensityTxt->getString().data());
+	//computePressureShader.initFromText(computePressureTxt->getString().data());
 }
 
 void SPH_Compute::update(float deltaTime) {
@@ -424,12 +433,15 @@ void SPH_Compute::spawnRandomParticles(unsigned int spawnCount) {
 namespace ModularFluids
 {
 	void LoadLib(MF_GETPROCADDRESSPROC funcPtr) {
-		beeMovie = ResourceManager::genResource(IDR_TEXTFILE1, TEXTFILE);
+		//beeMovie = ResourceManager::genResource(IDR_TEXTFILE1, TEXTFILE);
 		//std::cout << beeMovie->getString() << std::endl;
-		particleComputeTxt = ResourceManager::genResource(IDR_TEXTFILE2, TEXTFILE);
-		buildHashTxt = ResourceManager::genResource(IDR_TEXTFILE3, TEXTFILE);
-		computeDensityTxt = ResourceManager::genResource(IDR_TEXTFILE4, TEXTFILE);
-		computePressureTxt = ResourceManager::genResource(IDR_TEXTFILE5, TEXTFILE);
+		//std::cout << ResourceManager::getResource(IDR_TEXTFILE1)->getString() << std::endl;
+		
+		
+		//particleComputeTxt = ResourceManager::genResource(IDR_TEXTFILE2, TEXTFILE);
+		//buildHashTxt = ResourceManager::genResource(IDR_TEXTFILE3, TEXTFILE);
+		//computeDensityTxt = ResourceManager::genResource(IDR_TEXTFILE4, TEXTFILE);
+		//computePressureTxt = ResourceManager::genResource(IDR_TEXTFILE5, TEXTFILE);
 
 
 		gladLoadGLLoader((GLADloadproc)funcPtr);

@@ -1,5 +1,6 @@
 ﻿#version 460
 
+
 //#define MAX_PARTICLES 2048
 #define MAX_PARTICLES 65536
 //#define MAX_PARTICLES 262144
