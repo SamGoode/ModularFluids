@@ -12,8 +12,8 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH:
-        ResourceManager::passDllModuleRef((std::size_t)hModule);
-        ResourceManager::loadResources();
+        ResourceManager::Init((std::size_t)hModule);
+        ResourceManager::LoadResources();
     case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
     case DLL_PROCESS_DETACH:

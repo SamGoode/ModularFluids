@@ -2,16 +2,11 @@
 
 #include <iostream>
 
-//#include <windows.h>
-//#include <cstdio>
-//#include "resource.h"
-
 
 class IResource {
 public:
 	virtual ~IResource() = 0 {}
 
-	//virtual void load(int resource_id, int resource_type) = 0;
 	virtual	std::string_view getString() const = 0;
 	virtual std::size_t getSize() = 0;
 	virtual void* getData() = 0;
@@ -19,15 +14,8 @@ public:
 
 
 namespace ResourceManager {
-	void passDllModuleRef(std::size_t hModule);
+	void Init(std::size_t hModule);
+	void LoadResources();
 
-	void loadResources();
-	IResource* getResource(int resource_id);
-
-	//IResource* genResource();
-	//IResource* genResource(int resource_id, int resource_type);
-
-	//IResource* loadResource(int resource_id, int resource_type);
-	//void getResourceStr();
-
+	IResource* GetResource(int resource_id);
 }
