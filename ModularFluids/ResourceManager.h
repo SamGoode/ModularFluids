@@ -7,9 +7,10 @@ class IResource {
 public:
 	virtual ~IResource() = 0 {}
 
-	virtual	std::string_view getString() const = 0;
-	virtual std::size_t getSize() = 0;
-	virtual void* getData() = 0;
+	virtual std::size_t size() = 0;
+	virtual void* data() = 0;
+
+	virtual	std::string_view toString() const = 0;
 };
 
 

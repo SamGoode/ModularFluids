@@ -13,11 +13,10 @@
 
 #include "resource.h"
 #include "ResourceManager.h"
+#include "ShaderManager.h"
 
 
-//#define MAX_PARTICLES 2048
-#define MAX_PARTICLES 65536
-//#define MAX_PARTICLES 262144
+#define MAX_PARTICLES 32768
 
 //#define MAX_PARTICLES_PER_CELL 16 // Only viable when using Mullet.M position based fluid technique
 #define MAX_PARTICLES_PER_CELL 32
@@ -31,84 +30,8 @@
 
 
 // DLL internal state variables:
-//static IResource* beeMovie = nullptr;
-//static IResource* particleComputeTxt = nullptr;
-//static IResource* buildHashTxt = nullptr;
-//static IResource* computeDensityTxt = nullptr;
-//static IResource* computePressureTxt = nullptr;
-//static IResource* configTxt = nullptr;
-
 static const unsigned int zero = 0;
 static const unsigned int uintMax = 0xFFFFFFFF;
-
-
-
-class Shader {
-protected:
-	unsigned int gl_id = 0;
-
-public:
-	Shader() {}
-	virtual ~Shader() { glDeleteProgram(gl_id); }
-
-	//virtual void init(const char* vertFileName, const char* fragFileName);
-	void use() { glUseProgram(gl_id); }
-	void bindUniform(const float& f, const char* name) { unsigned int uniformLocation = glGetUniformLocation(gl_id, name); glUniform1f(uniformLocation, f); }
-	void bindUniform(const int& i, const char* name) { unsigned int uniformLocation = glGetUniformLocation(gl_id, name); glUniform1i(uniformLocation, i); }
-	void bindUniform(const glm::vec2& v2, const char* name) { unsigned int uniformLocation = glGetUniformLocation(gl_id, name); glUniform2fv(uniformLocation, 1, glm::value_ptr(v2)); }
-	void bindUniform(const glm::vec3& v3, const char* name) { unsigned int uniformLocation = glGetUniformLocation(gl_id, name); glUniform3fv(uniformLocation, 1, glm::value_ptr(v3)); }
-	void bindUniform(const glm::mat4& m4, const char* name) { unsigned int uniformLocation = glGetUniformLocation(gl_id, name); glUniformMatrix4fv(uniformLocation, 1, false, glm::value_ptr(m4)); }
-	void bindUniformBuffer(GLuint bindingIndex, const char* name) { unsigned int uniformBlockIndex = glGetUniformBlockIndex(gl_id, name); glUniformBlockBinding(gl_id, uniformBlockIndex, bindingIndex); }
-
-protected:
-	//unsigned int loadShaderFromFile(GLenum type, const char* fileName);
-	unsigned int loadShaderFromText(GLenum type, const char* srcCodeTxt);
-};
-
-class ComputeShader : public Shader {
-public:
-	ComputeShader() {}
-
-	//virtual void init(const char* computeFileName, const char* empty = NULL) override;
-	void initFromText(const char* srcCodeTxt);
-};
-
-unsigned int Shader::loadShaderFromText(GLenum type, const char* srcCodeText)
-{
-	unsigned int shader = glCreateShader(type);
-	//glShaderSource(shader, 1, &srcCodeText, 0);
-	glShaderSource(shader, 1, (const char**)&srcCodeText, 0);
-
-	return shader;
-}
-
-void ComputeShader::initFromText(const char* srcCodeTxt) {
-	assert(gl_id == 0 && "Shader already initialized");
-
-	unsigned int cs = loadShaderFromText(GL_COMPUTE_SHADER, srcCodeTxt);
-	glCompileShader(cs);
-
-	gl_id = glCreateProgram();
-	glAttachShader(gl_id, cs);
-	glLinkProgram(gl_id);
-
-	glValidateProgram(gl_id);
-
-	int success = GL_FALSE;
-	glGetProgramiv(gl_id, GL_LINK_STATUS, &success);
-	if (success == GL_FALSE) {
-		int infoLogLength = 0;
-		glGetProgramiv(gl_id, GL_INFO_LOG_LENGTH, &infoLogLength);
-		char* infoLog = new char[infoLogLength + 1];
-
-		glGetProgramInfoLog(gl_id, infoLogLength, 0, infoLog);
-		printf("Error: Failed to link shader program!\n%s\n", infoLog);
-		delete[] infoLog;
-	}
-
-	glDeleteShader(cs);
-}
-
 
 
 struct uboData {
@@ -255,8 +178,8 @@ public:
 	virtual void syncUBO() override;
 	virtual void resetHashDataSSBO() override;
 
-	virtual unsigned int getParticleCount() override { return particleCount; }
 	virtual void spawnRandomParticles(unsigned int spawnCount) override;
+	virtual unsigned int getParticleCount() override { return particleCount; }
 	virtual void clearParticles() override { particleCount = 0; }
 
 	virtual void bindConfigUBO(GLuint bindingIndex) override { configUBO.bindBufferBase(bindingIndex); }
@@ -302,17 +225,10 @@ void SPH_Compute::init(glm::vec3 _position, glm::vec3 _bounds, glm::vec3 _gravit
 	indirectCmdsSSBO.clearBufferData();
 
 	// Compute Shaders
-	std::string configStr = std::string(ResourceManager::GetResource(IDR_CONFIG)->getString());
-	std::string test = std::string(ResourceManager::GetResource(IDR_TEXTFILE2)->getString());
-	//test = "#version 460\n" + test;
-	test = configStr + '\n' + test;
-
-
-	particleComputeShader.initFromText(test.c_str());
-	//particleComputeShader.initFromText(ResourceManager::GetResource(IDR_TEXTFILE2)->getString().data());
-	computeHashTableShader.initFromText(ResourceManager::GetResource(IDR_TEXTFILE3)->getString().data());
-	computeDensityShader.initFromText(ResourceManager::GetResource(IDR_TEXTFILE4)->getString().data());
-	computePressureShader.initFromText(ResourceManager::GetResource(IDR_TEXTFILE5)->getString().data());
+	ShaderManager::LoadShader_Particle(particleComputeShader);
+	ShaderManager::LoadShader_HashTable(computeHashTableShader);
+	ShaderManager::LoadShader_Density(computeDensityShader);
+	ShaderManager::LoadShader_Pressure(computePressureShader);
 }
 
 void SPH_Compute::update(float deltaTime) {
@@ -432,7 +348,7 @@ namespace ModularFluids
 {
 	void LoadLib(MF_GETPROCADDRESSPROC funcPtr) {
 		// BeeMovie script
-		//std::cout << ResourceManager::GetResource(IDR_BEEMOVIE)->getString() << std::endl;
+		//std::cout << ResourceManager::GetResource(IDR_BEEMOVIE)->toString() << std::endl;
 
 
 		gladLoadGLLoader((GLADloadproc)funcPtr);

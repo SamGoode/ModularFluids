@@ -33,19 +33,19 @@ public:
 		p.ptr = LockResource(hMemory);
 	}
 
-	virtual std::string_view getString() const override {
+	virtual std::size_t size() override {
+		return p.size_bytes;
+	}
+
+	virtual void* data() override {
+		return p.ptr;
+	}
+
+	virtual std::string_view toString() const override {
 		std::string_view dst;
 		if (p.ptr != nullptr)
 			dst = std::string_view(reinterpret_cast<char*>(p.ptr), p.size_bytes);
 		return dst;
-	}
-
-	virtual std::size_t getSize() override {
-		return p.size_bytes;
-	}
-
-	virtual void* getData() override {
-		return p.ptr;
 	}
 };
 
@@ -61,12 +61,20 @@ namespace ResourceManager {
 
 	// Can replace with EnumResource functionality later.
 	void LoadResources() {
-		loadedResources.insert({ IDR_BEEMOVIE, new Resource(dllModule, IDR_BEEMOVIE, TEXTFILE) });
-		loadedResources.insert({ IDR_TEXTFILE2, new Resource(dllModule, IDR_TEXTFILE2, TEXTFILE) });
-		loadedResources.insert({ IDR_TEXTFILE3, new Resource(dllModule, IDR_TEXTFILE3, TEXTFILE) });
-		loadedResources.insert({ IDR_TEXTFILE4, new Resource(dllModule, IDR_TEXTFILE4, TEXTFILE) });
-		loadedResources.insert({ IDR_TEXTFILE5, new Resource(dllModule, IDR_TEXTFILE5, TEXTFILE) });
-		loadedResources.insert({ IDR_CONFIG, new Resource(dllModule, IDR_CONFIG, TEXTFILE) });
+		loadedResources.insert({ IDR_BEEMOVIE,				new Resource(dllModule, IDR_BEEMOVIE,				TEXTFILE) });
+		loadedResources.insert({ IDR_CONFIG,				new Resource(dllModule, IDR_CONFIG,					TEXTFILE) });
+
+		loadedResources.insert({ IDR_COMP_PARTICLE,			new Resource(dllModule, IDR_COMP_PARTICLE,			TEXTFILE) });
+		loadedResources.insert({ IDR_COMP_HASHTABLE,		new Resource(dllModule, IDR_COMP_HASHTABLE,			TEXTFILE) });
+		loadedResources.insert({ IDR_COMP_DENSITY,			new Resource(dllModule, IDR_COMP_DENSITY,			TEXTFILE) });
+		loadedResources.insert({ IDR_COMP_PRESSURE,			new Resource(dllModule, IDR_COMP_PRESSURE,			TEXTFILE) });
+
+		loadedResources.insert({ IDR_VERT_FULLSCREEN,		new Resource(dllModule, IDR_VERT_FULLSCREEN,		TEXTFILE) });
+		loadedResources.insert({ IDR_VERT_FLUIDDEPTH,		new Resource(dllModule, IDR_VERT_FLUIDDEPTH,		TEXTFILE) });
+		loadedResources.insert({ IDR_FRAG_FLUIDDEPTH,		new Resource(dllModule, IDR_FRAG_FLUIDDEPTH,		TEXTFILE) });
+		loadedResources.insert({ IDR_FRAG_GAUSSBLUR,		new Resource(dllModule, IDR_FRAG_GAUSSBLUR,			TEXTFILE) });
+		loadedResources.insert({ IDR_FRAG_RAYMARCH,			new Resource(dllModule, IDR_FRAG_RAYMARCH,			TEXTFILE) });
+		loadedResources.insert({ IDR_FRAG_RAYMARCHBOUNDS,	new Resource(dllModule, IDR_FRAG_RAYMARCHBOUNDS,	TEXTFILE) });
 	}
 
 

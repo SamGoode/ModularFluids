@@ -1,23 +1,3 @@
-#version 460
-
-
-//#define MAX_PARTICLES 2048
-#define MAX_PARTICLES 65536
-//#define MAX_PARTICLES 262144
-
-//#define MAX_PARTICLES_PER_CELL 16 // Only viable when using Mullet.M position based fluid technique
-#define MAX_PARTICLES_PER_CELL 32
-
-#define WORKGROUP_SIZE_X 1024
-
-#define COMPUTE_CELLS_PER_WORKGROUP 16
-
-#define PROJECTIONVIEW_UBO 0
-
-#define FLUID_CONFIG_UBO 1
-#define FLUID_DATA_SSBO 2
-
-
 layout(local_size_x = COMPUTE_CELLS_PER_WORKGROUP, local_size_y = MAX_PARTICLES_PER_CELL, local_size_z = 1) in;
 
 layout(binding = FLUID_CONFIG_UBO, std140) uniform FluidConfig {

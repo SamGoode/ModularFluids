@@ -35,10 +35,10 @@ public:
 	virtual void syncUBO() = 0;
 	virtual void resetHashDataSSBO() = 0;
 
-	virtual unsigned int getParticleCount() = 0;
-	virtual void clearParticles() = 0;
 	// Spawns particles randomly within simulation bounds in batches of 1024.
 	virtual void spawnRandomParticles(unsigned int spawnCount) = 0;
+	virtual unsigned int getParticleCount() = 0;
+	virtual void clearParticles() = 0;
 
 	virtual void bindConfigUBO(unsigned int bindingIndex) = 0;
 	virtual void bindParticleSSBO(unsigned int bindingIndex) = 0;
