@@ -33,7 +33,7 @@ layout(binding = FLUID_DATA_SSBO, std430) restrict buffer FluidData {
 	writeonly uint cells[];
 } data;
 
-layout(binding = 3, std430) writeonly restrict buffer DispatchIndirectCommand {
+layout(binding = INDIRECT_SSBO, std430) writeonly restrict buffer DispatchIndirectCommand {
 	uint num_groups_x;
 	uint num_groups_y;
 	uint num_groups_z;

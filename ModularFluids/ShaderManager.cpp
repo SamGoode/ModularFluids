@@ -10,7 +10,7 @@
 
 Shader::~Shader() { glDeleteProgram(gl_id); }
 
-void Shader::init(const char* vertFileName, const char* fragFileName) {} // FIX LATER
+//void Shader::init(const char* vertFileName, const char* fragFileName) {} // FIX LATER
 void Shader::use() { glUseProgram(gl_id); }
 
 void Shader::bindUniform(const float& f, const char* name) { unsigned int uniformLocation = glGetUniformLocation(gl_id, name); glUniform1f(uniformLocation, f); }
@@ -26,6 +26,36 @@ unsigned int Shader::loadShaderFromText(unsigned int type, const char* srcCodeTe
 	unsigned int shader = glCreateShader(type);
 	glShaderSource(shader, 1, &srcCodeText, 0);
 	return shader;
+}
+
+void Shader::init(const char* vertSrcTxt, const char* fragSrcTxt) {
+	assert(gl_id == 0 && "Shader already initialized");
+
+	unsigned int vs = loadShaderFromText(GL_VERTEX_SHADER, vertSrcTxt);
+	glCompileShader(vs);
+
+	unsigned int fs = loadShaderFromText(GL_FRAGMENT_SHADER, fragSrcTxt);
+	glCompileShader(fs);
+
+	gl_id = glCreateProgram();
+	glAttachShader(gl_id, vs);
+	glAttachShader(gl_id, fs);
+	glLinkProgram(gl_id);
+
+	int success = GL_FALSE;
+	glGetProgramiv(gl_id, GL_LINK_STATUS, &success);
+	if (success == GL_FALSE) {
+		int infoLogLength = 0;
+		glGetProgramiv(gl_id, GL_INFO_LOG_LENGTH, &infoLogLength);
+		char* infoLog = new char[infoLogLength + 1];
+
+		glGetProgramInfoLog(gl_id, infoLogLength, 0, infoLog);
+		printf("Error: Failed to link shader program!\n%s\n", infoLog);
+		delete[] infoLog;
+	}
+
+	glDeleteShader(vs);
+	glDeleteShader(fs);
 }
 
 
@@ -57,10 +87,9 @@ void ComputeShader::init(const char* srcCodeTxt, const char* empty) {
 }
 
 
-
 // ShaderManager internal variables
 static std::string version = "#version 460\n";
-static std::string setMaxParticles = "#define MAX_PARTICLES 32768\n";
+static std::string setMaxParticles = "#define MAX_PARTICLES 131072\n";
 
 static void load_shader(ComputeShader& compute, int shaderResource_id) {
 	std::string configStr = std::string(ResourceManager::GetResource(IDR_CONFIG)->toString());
@@ -69,6 +98,19 @@ static void load_shader(ComputeShader& compute, int shaderResource_id) {
 	//std::string out = version + configStr + '\n' + compStr;
 	std::string out = version + setMaxParticles + configStr + '\n' + compStr;
 	compute.init(out.c_str());
+}
+
+static void load_shader(Shader& shader, int vertResource_id, int fragResource_id) {
+	std::string configStr = std::string(ResourceManager::GetResource(IDR_CONFIG)->toString());
+	std::string vertStr = std::string(ResourceManager::GetResource(vertResource_id)->toString());
+	std::string fragStr = std::string(ResourceManager::GetResource(fragResource_id)->toString());
+
+	//std::string out = version + configStr + '\n' + compStr;
+	std::string vertOut = version + setMaxParticles + configStr + '\n' + vertStr;
+	std::string fragOut = version + setMaxParticles + configStr + '\n' + fragStr;
+
+
+	shader.init(vertOut.c_str(), fragOut.c_str());
 }
 
 
@@ -88,6 +130,18 @@ namespace ShaderManager {
 
 	void LoadShader_Pressure(ComputeShader& compute) {
 		load_shader(compute, IDR_COMP_PRESSURE);
+	}
+
+	void LoadShader_FluidDepth(Shader& shader) {
+		load_shader(shader, IDR_VERT_FLUIDDEPTH, IDR_FRAG_FLUIDDEPTH);
+	}
+
+	void LoadShader_GaussBlur(Shader& shader) {
+		load_shader(shader, IDR_VERT_FULLSCREEN, IDR_FRAG_GAUSSBLUR);
+	}
+
+	void LoadShader_Raymarch(Shader& shader) {
+		load_shader(shader, IDR_VERT_FULLSCREEN, IDR_FRAG_RAYMARCH);
 	}
 }
 

@@ -1,6 +1,4 @@
-#version 430 core
 
-#include "common.h"
 
 
 layout(binding = PROJECTIONVIEW_UBO, std140) uniform PVMatrices {

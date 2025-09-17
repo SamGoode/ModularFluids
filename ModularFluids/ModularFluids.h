@@ -45,6 +45,14 @@ public:
 	virtual void bindIndirectCmdsSSBO(unsigned int bindingIndex) = 0;
 	virtual void useIndirectCmdsSSBO() = 0;
 	virtual void getIndirectCmdsData(void* data) = 0;
+
+	virtual void useFluid() = 0;
+	virtual void useGauss() = 0;
+	virtual void useRaymarch() = 0;
+
+	virtual void bindFluid(int i, const char* name) = 0;
+	virtual void bindGauss(int i, const char* name) = 0;
+	virtual void bindRaymarch(int i, const char* name) = 0;
 };
 
 
@@ -62,6 +70,7 @@ namespace ModularFluids {
 		glm::vec3 position, glm::vec3 bounds, glm::vec3 gravity,
 		float particleRadius = 0.4f, float restDensity = 1000.f, float stiffness = 20.f, float nearStiffness = 80.f);
 
-	extern "C" MODULARFLUIDS_API void Update(ISPH_Compute* instance);
+	extern "C" MODULARFLUIDS_API void Update(ISPH_Compute* instance, float deltaTime);
 	extern "C" MODULARFLUIDS_API void StepSim(ISPH_Compute* instance);
+
 }

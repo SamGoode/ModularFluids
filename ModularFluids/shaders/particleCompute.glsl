@@ -139,7 +139,7 @@ void main() {
 
 	// Boundaries
 	//applyBoundaryConstraints(particleIndex);
-	//applyBoundaryPressure(particleIndex);
+	applyBoundaryPressure(particleIndex);
 
 
 

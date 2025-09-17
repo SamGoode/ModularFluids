@@ -1,6 +1,4 @@
-#version 430 core
 
-#include "common.h"
 
 
 in vec2 vTexCoord;

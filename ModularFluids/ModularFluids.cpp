@@ -16,7 +16,7 @@
 #include "ShaderManager.h"
 
 
-#define MAX_PARTICLES 32768
+#define MAX_PARTICLES 131072
 
 //#define MAX_PARTICLES_PER_CELL 16 // Only viable when using Mullet.M position based fluid technique
 #define MAX_PARTICLES_PER_CELL 32
@@ -27,6 +27,7 @@
 
 #define FLUID_CONFIG_UBO 1
 #define FLUID_DATA_SSBO 2
+#define INDIRECT_SSBO 3
 
 
 // DLL internal state variables:
@@ -161,6 +162,10 @@ private:
 	ComputeShader computeDensityShader;
 	ComputeShader computePressureShader;
 
+	Shader fluidDepthShader;
+	Shader gaussBlurShader;
+	Shader raymarchShader;
+
 	// Buffer for particle position data.
 	glm::vec4 positionBuffer[1024];
 
@@ -187,6 +192,14 @@ public:
 	virtual void bindIndirectCmdsSSBO(GLuint bindingIndex) override { indirectCmdsSSBO.bindBufferBase(bindingIndex); }
 	virtual void useIndirectCmdsSSBO() override { indirectCmdsSSBO.bindAsIndirect(); }
 	virtual void getIndirectCmdsData(void* data) { indirectCmdsSSBO.getSubData(0, sizeof(unsigned int) * 3, data); }
+
+	virtual void useFluid() override { fluidDepthShader.use(); }
+	virtual void useGauss() override { gaussBlurShader.use(); }
+	virtual void useRaymarch() override { raymarchShader.use(); }
+
+	virtual void bindFluid(int i, const char* name) override { fluidDepthShader.bindUniform(i, name); }
+	virtual void bindGauss(int i, const char* name) override { gaussBlurShader.bindUniform(i, name); }
+	virtual void bindRaymarch(int i, const char* name) override { raymarchShader.bindUniform(i, name); }
 };
 
 void SPH_Compute::init(glm::vec3 _position, glm::vec3 _bounds, glm::vec3 _gravity, float _particleRadius,
@@ -229,12 +242,21 @@ void SPH_Compute::init(glm::vec3 _position, glm::vec3 _bounds, glm::vec3 _gravit
 	ShaderManager::LoadShader_HashTable(computeHashTableShader);
 	ShaderManager::LoadShader_Density(computeDensityShader);
 	ShaderManager::LoadShader_Pressure(computePressureShader);
+
+	// Shaders
+	ShaderManager::LoadShader_FluidDepth(fluidDepthShader);
+	ShaderManager::LoadShader_GaussBlur(gaussBlurShader);
+	ShaderManager::LoadShader_Raymarch(raymarchShader);
 }
 
 void SPH_Compute::update(float deltaTime) {
 	accumulatedTime += deltaTime;
 
 	syncUBO();
+
+	configUBO.bindBufferBase(FLUID_CONFIG_UBO);
+	particleSSBO.bindBufferBase(FLUID_DATA_SSBO);
+	indirectCmdsSSBO.bindBufferBase(INDIRECT_SSBO);
 
 	for (unsigned int step = 0; step < maxTicksPerUpdate && accumulatedTime > fixedTimeStep; step++) {
 		accumulatedTime -= fixedTimeStep;
@@ -246,8 +268,6 @@ void SPH_Compute::update(float deltaTime) {
 void SPH_Compute::stepSim() {
 	resetHashDataSSBO();
 	glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
-
-	indirectCmdsSSBO.bindBufferBase(3);
 
 	particleComputeShader.use();
 	glDispatchCompute((particleCount / WORKGROUP_SIZE_X) + ((particleCount % WORKGROUP_SIZE_X) != 0), 1, 1);
@@ -295,7 +315,6 @@ void SPH_Compute::syncUBO() {
 }
 
 void SPH_Compute::resetHashDataSSBO() {
-	//particleSSBO.subData(15 * MAX_PARTICLES * sizeof(float), sizeof(float), &zero);//&usedCells);
 	particleSSBO.clearNamedSubData(GL_R32UI, 15 * MAX_PARTICLES * sizeof(float), sizeof(float), GL_RED_INTEGER, GL_UNSIGNED_INT, &zero);
 	particleSSBO.clearNamedSubData(GL_R32UI, ((16 * MAX_PARTICLES) + 1) * sizeof(float), MAX_PARTICLES * sizeof(float), GL_RED_INTEGER, GL_UNSIGNED_INT, &uintMax);
 	particleSSBO.clearNamedSubData(GL_R32UI, ((17 * MAX_PARTICLES) + 1) * sizeof(float), MAX_PARTICLES * sizeof(float), GL_RED_INTEGER, GL_UNSIGNED_INT, &zero);
@@ -329,8 +348,6 @@ void SPH_Compute::spawnRandomParticles(unsigned int spawnCount) {
 	glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
 }
 
-
-
 // Might use later
 //// Mullen.M parameters
 //float epsilon = 0.f;
@@ -347,12 +364,11 @@ void SPH_Compute::spawnRandomParticles(unsigned int spawnCount) {
 namespace ModularFluids
 {
 	void LoadLib(MF_GETPROCADDRESSPROC funcPtr) {
+		gladLoadGLLoader((GLADloadproc)funcPtr);
+		//std::cout << "ModularFluids glDispatchComputeIndirect: " << glad_glDispatchComputeIndirect << std::endl;
+		
 		// BeeMovie script
 		//std::cout << ResourceManager::GetResource(IDR_BEEMOVIE)->toString() << std::endl;
-
-
-		gladLoadGLLoader((GLADloadproc)funcPtr);
-		std::cout << "ModularFluids glDispatchComputeIndirect: " << glad_glDispatchComputeIndirect << std::endl;
 	}
 
 	ISPH_Compute* Create() { return new SPH_Compute(); }
@@ -367,4 +383,5 @@ namespace ModularFluids
 
 	void Update(ISPH_Compute* instance, float deltaTime) { instance->update(deltaTime); }
 	void StepSim(ISPH_Compute* instance) { instance->stepSim(); }
+
 }

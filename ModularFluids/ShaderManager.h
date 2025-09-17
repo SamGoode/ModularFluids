@@ -43,4 +43,8 @@ namespace ShaderManager {
 	void LoadShader_HashTable(ComputeShader& compute);
 	void LoadShader_Density(ComputeShader& compute);
 	void LoadShader_Pressure(ComputeShader& compute);
+
+	void LoadShader_FluidDepth(Shader& shader);
+	void LoadShader_GaussBlur(Shader& shader);
+	void LoadShader_Raymarch(Shader& shader);
 }

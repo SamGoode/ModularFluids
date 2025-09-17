@@ -1,6 +1,3 @@
-#version 430 core
-
-#include "common.h"
 
 
 flat in float vDepth;

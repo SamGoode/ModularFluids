@@ -11,3 +11,6 @@
 
 #define FLUID_CONFIG_UBO 1
 #define FLUID_DATA_SSBO 2
+#define INDIRECT_SSBO 3
+
+#define PROJECTIONVIEW_UBO 0
